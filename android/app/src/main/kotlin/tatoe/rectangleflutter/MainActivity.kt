@@ -1,0 +1,6 @@
+package tatoe.rectangleflutter
+
+import io.flutter.embedding.android.FlutterActivity
+
+class MainActivity: FlutterActivity() {
+}
