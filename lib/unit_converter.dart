@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:rectangleflutter/category.dart';
 import 'package:rectangleflutter/unit.dart';
 
+import 'api.dart';
+
 const _padding = EdgeInsets.all(16.0);
 
 class UnitConverter extends StatefulWidget {
@@ -29,6 +31,8 @@ class _MyConverterScreenState extends State<UnitConverter> {
   List<DropdownMenuItem> _unitMenuItems;
 
   double _inputValue;
+  bool _showErrorUI = false;
+//  final _inputKey = GlobalKey(debugLabel: 'inputText');
 
   @override
   void initState() {
@@ -70,11 +74,31 @@ class _MyConverterScreenState extends State<UnitConverter> {
     return outputNum;
   }
 
-  void _updateConversion() {
-    setState(() {
-      _convertedValue =
-          _format(_inputValue * (_toValue.conversion / _fromValue.conversion));
-    });
+  Future<void> _updateConversion() async {
+    // Our API has a handy convert function, so we can use that for
+    // the Currency [Category]
+    if (widget.category.name == apiCategory['name']) {
+      final api = Api();
+      final conversion = await api.convert(apiCategory['route'],
+          _inputValue.toString(), _fromValue.name, _toValue.name);
+
+      if (conversion == null) {
+        setState(() {
+          _showErrorUI = true;
+        });
+      } else {
+        setState(() {
+          _showErrorUI = false;
+          _convertedValue = _format(conversion);
+        });
+      }
+    } else {
+      // For the static units, we do the conversion ourselves
+      setState(() {
+        _convertedValue = _format(
+            _inputValue * (_toValue.conversion / _fromValue.conversion));
+      });
+    }
   }
 
   void _updateInputValue(String input) {
@@ -175,6 +199,38 @@ class _MyConverterScreenState extends State<UnitConverter> {
   @override
   Widget build(BuildContext context) {
     //so you from the state changer class you can access variables of the "parent" class by calling widget
+
+    if (widget.category.units == null ||
+        (widget.category.name == apiCategory['name'] && _showErrorUI)) {
+      return SingleChildScrollView(
+        child: Container(
+          margin: _padding,
+          padding: _padding,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16.0),
+            color: widget.category.color['error'],
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.error_outline,
+                size: 180.0,
+                color: Colors.white,
+              ),
+              Text(
+                "Oh no! We can't connect right now!",
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.headline.copyWith(
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     final input = Padding(
       padding: _padding,

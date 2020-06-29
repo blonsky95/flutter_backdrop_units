@@ -35,7 +35,8 @@ class CategoryTile extends StatelessWidget {
   // See https://docs.flutter.io/flutter/material/Theme-class.html
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.transparent,
+      color:
+          onTap == null ? Color.fromRGBO(50, 50, 50, 0.2) : Colors.transparent,
       child: Container(
         height: _rowHeight,
         child: InkWell(
@@ -44,7 +45,7 @@ class CategoryTile extends StatelessWidget {
           splashColor: category.color['splash'],
           // We can use either the () => function() or the () { function(); }
           // syntax.
-          onTap: () => onTap(category),
+          onTap: onTap == null ? null : () => onTap(category),
           child: Padding(
             padding: EdgeInsets.all(8.0),
             child: Row(
@@ -56,10 +57,7 @@ class CategoryTile extends StatelessWidget {
               children: [
                 Padding(
                   padding: EdgeInsets.all(16.0),
-                  child: Icon(
-                    category.iconLocation,
-                    size: 60.0,
-                  ),
+                  child: Image.asset(category.iconLocation),
                 ),
                 Center(
                   child: Text(

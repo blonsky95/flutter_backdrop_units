@@ -7,6 +7,11 @@ import 'backdrop.dart';
 import 'category.dart';
 import 'category_tile.dart';
 
+import 'dart:async';
+import 'dart:convert';
+import 'api.dart';
+
+
 final _backgroundColor = Colors.green[100];
 
 class CategoryScreen extends StatefulWidget {
@@ -69,24 +74,123 @@ class _MyCategoryScreenState extends State<CategoryScreen> {
     }),
   ];
 
+  static const _icons = <String>[
+    'assets/icons/length.png',
+    'assets/icons/area.png',
+    'assets/icons/volume.png',
+    'assets/icons/mass.png',
+    'assets/icons/time.png',
+    'assets/icons/digital_storage.png',
+    'assets/icons/power.png',
+    'assets/icons/currency.png',
+  ];
+
 //  static const _categoryIcons = <IconData>[];
 
   @override
-  void initState() {
-    super.initState();
-    for (var i = 0; i < _categoryNames.length; i++) {
-      var category = Category(
-        name: _categoryNames[i],
-        color: _baseColors[i],
-        iconLocation: Icons.cake,
-        units: _retrieveUnitList(_categoryNames[i]),
-      );
-      if (i == 0) {
-        _defaultCategory = category;
-      }
-      _categories.add(category);
+  Future<void> didChangeDependencies() async {
+    super.didChangeDependencies();
+    // We have static unit conversions located in our
+    // assets/data/regular_units.json
+    if (_categories.isEmpty) {
+      await _retrieveLocalCategories();
+      await _retrieveApiCategory();
     }
   }
+
+  Future<void> _retrieveLocalCategories() async {
+    // Consider omitting the types for local variables. For more details on Effective
+    // Dart Usage, see https://www.dartlang.org/guides/language/effective-dart/usage
+    final json = DefaultAssetBundle
+        .of(context)
+        .loadString('assets/data/regular_units.json');
+    final data = JsonDecoder().convert(await json);
+    print("data size: ${data}");
+
+    if (data is! Map) {
+      throw ('Data retrieved from API is not a Map');
+    }
+    var categoryIndex = 0;
+    data.keys.forEach((key) {
+      final List<Unit> units =
+      data[key].map<Unit>((dynamic data) => Unit.fromJson(data)).toList();
+      print("key name: ${units[categoryIndex].name} and value unit: ${units[categoryIndex].conversion}");
+      var category = Category(
+        name: key,
+        units: units,
+        color: _baseColors[categoryIndex],
+        iconLocation: _icons[categoryIndex],
+      );
+      setState(() {
+        if (categoryIndex == 0) {
+          _defaultCategory = category;
+        }
+        _categories.add(category);
+      });
+      categoryIndex += 1;
+    });
+  }
+
+  /// Retrieves a [Category] and its [Unit]s from an API on the web
+  Future<void> _retrieveApiCategory() async {
+    // Add a placeholder while we fetch the Currency category using the API
+    setState(() {
+      _categories.add(Category(
+        name: apiCategory['name'],
+        units: [],
+        color: _baseColors.last,
+        iconLocation: _icons.last,
+      ));
+    });
+    final api = Api();
+    final jsonUnits = await api.getUnits(apiCategory['route']);
+    // If the API errors out or we have no internet connection, this category
+    // remains in placeholder mode (disabled)
+    if (jsonUnits != null) {
+      final units = <Unit>[];
+      for (var unit in jsonUnits) {
+        units.add(Unit.fromJson(unit));
+      }
+      setState(() {
+        _categories.removeLast();
+        _categories.add(Category(
+          name: apiCategory['name'],
+          units: units,
+          color: _baseColors.last,
+          iconLocation: _icons.last,
+        ));
+      });
+    }
+  }
+
+//  @override
+//  void initState() {
+//    print("Init STATE");
+//
+//    super.initState();
+//    for (var i = 0; i < _categoryNames.length; i++) {
+//      var category = Category(
+//        name: _categoryNames[i],
+//        color: _baseColors[i],
+//        iconLocation: Icons.cake,
+//        units: _retrieveUnitList(_categoryNames[i]),
+//      );
+//      if (i == 0) {
+//        _defaultCategory = category;
+//      }
+//      _categories.add(category);
+//    }
+//  }
+
+//  List<Unit> _retrieveUnitList(String categoryName) {
+//    return List.generate(10, (int i) {
+//      i += 1;
+//      return Unit(
+//        name: '$categoryName Unit $i',
+//        conversion: i.toDouble(),
+//      );
+//    });
+//  }
 
   Widget _buildCategoryWidgets() {
     return ListView.builder(
@@ -105,15 +209,7 @@ class _MyCategoryScreenState extends State<CategoryScreen> {
     });
   }
 
-  List<Unit> _retrieveUnitList(String categoryName) {
-    return List.generate(10, (int i) {
-      i += 1;
-      return Unit(
-        name: '$categoryName Unit $i',
-        conversion: i.toDouble(),
-      );
-    });
-  }
+
 
   @override
   Widget build(BuildContext context) {
